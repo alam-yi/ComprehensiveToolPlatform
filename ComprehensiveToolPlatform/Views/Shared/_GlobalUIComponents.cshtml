@@ -1,0 +1,104 @@
+﻿@* 全局 loading *@
+<div id="globalLoader" class="d-none position-fixed top-0 start-0 w-100 h-100"
+     style="background:rgba(0,0,0,.5);z-index:9999;">
+    <div class="position-absolute top-50 start-50 translate-middle text-center text-white">
+        <div class="spinner-border text-light" role="status" style="width:3rem;height:3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">加载中，请稍候…</div>
+    </div>
+</div>
+
+@* 警告提示 Toast *@
+<div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 11">
+    <div id="warningToast" class="toast bg-warning text-white" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-body">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <span id="warningMsg">请注意！</span>
+        </div>
+    </div>
+</div>
+
+@* 错误提示 Toast *@
+<div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 11">
+    <div id="errorToast" class="toast bg-danger text-white" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-body">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <span id="errorMsg">出错了！</span>
+        </div>
+    </div>
+</div>
+
+@* 确认框 Modal *@
+<div class="modal fade" id="bsConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bsConfirmTitle">提示</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bsConfirmBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="bsConfirmOK">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* 初始化 Toast 实例 *@
+<script>
+    // 确保 Bootstrap JS 已加载
+    document.addEventListener('DOMContentLoaded', function () {
+        window.warningToast = new bootstrap.Toast(document.getElementById('warningToast'));
+        window.errorToast = new bootstrap.Toast(document.getElementById('errorToast'));
+    });
+</script>
+
+@* 业务逻辑函数 *@
+<script>
+    // 显示 loading 并禁止操作
+    window.showLoading = function() {
+        document.getElementById('globalLoader').classList.remove('d-none');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 隐藏 loading 并恢复操作
+    window.hideLoading = function() {
+        document.getElementById('globalLoader').classList.add('d-none');
+        document.body.style.overflow = '';
+    }
+
+    // 显示警告消息
+    window.showWarning = function(message) {
+        document.getElementById('warningMsg').textContent = message;
+        warningToast.show();
+    }
+
+    // 显示错误i消息
+    window.showError = function(message) {
+        document.getElementById('errorMsg').textContent = message;
+        errorToast.show();
+    }
+
+    // 确认框
+    window.bsConfirm = function(title, text) {
+        return new Promise((resolve, reject) => {
+            const modalEl = document.getElementById('bsConfirmModal');
+            document.getElementById('bsConfirmTitle').textContent = title;
+            document.getElementById('bsConfirmBody').innerHTML = text.replace(/\n/g, '<br>');
+
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            // 清理旧事件，避免多次绑定
+            const okBtn = document.getElementById('bsConfirmOK');
+            okBtn.onclick = () => {
+                modal.hide();
+                resolve();
+            };
+
+            modalEl.addEventListener('hidden.bs.modal', () => reject(), { once: true });
+        });
+    }
+</script>

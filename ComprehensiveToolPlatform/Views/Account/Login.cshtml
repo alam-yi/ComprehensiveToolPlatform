@@ -1,0 +1,181 @@
+﻿@model ComprehensiveToolPlatform.LoginRequest
+
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>用户登录 - 综合工具平台</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <style>
+        /* 全屏背景图样式 */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            position: relative; /* 为绝对定位的子元素提供参考 */
+        }
+
+        .bg-image {
+            /* 替换为您自己的图片URL */
+            background-image: url('/pics/login-bg.jpg');
+            /* 图片平铺整个页面 */
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            /* 确保覆盖整个视口 */
+            min-height: 100vh;
+            width: 100%;
+            position: relative; /* 确保内容正确显示 */
+        }
+
+        /* 登录框样式 - 白色背景 */
+        .login-box {
+            background-color: rgba(255, 255, 255, 0.95); /* 白色背景，稍微透明 */
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
+            max-width: 400px; /* 限制最大宽度 */
+            width: 90%; /* 在小屏幕上留边距 */
+        }
+
+            /* 登录框内的图片样式 */
+            .login-box img {
+                width: 160px; /* 设置图片宽度 */
+                object-fit: contain; /* 保持图片比例 */
+                margin: 0 auto 30px auto; /* 居中并添加底部间距 */
+                display: block;
+            }
+
+        /* 修改footer样式为绝对定位 */
+        .footer {
+            position: absolute; /* 改为绝对定位 */
+            bottom: 0; /* 定位到底部 */
+            left: 0;
+            right: 0;
+            z-index: 10; /* 确保在背景图上方 */
+            background-color: transparent; /* 透明背景 */
+            padding: 15px 0; /* 保持一些内边距 */
+        }
+
+        /* 确保登录框不会被footer遮挡 */
+        .bg-image .container-fluid {
+            padding-bottom: 80px; /* 为footer留出空间 */
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景图容器 -->
+    <div class="bg-image d-flex align-items-center">
+        <!-- 页面内容 -->
+        <div class="container-fluid" style="margin-left: 55%;">
+            <div class="login-box">
+                <!-- Logo图片 -->
+                <img src="~/pics/company_logo.png" />
+                <!-- 账号输入框 -->
+                <div class="mb-3">
+                    <label for="username" class="form-label">账号</label>
+                    <input type="text" class="form-control" id="username" placeholder="请输入账号">
+                    <div class="invalid-feedback" id="usernameError" style="display: none;">
+                        请输入账号！
+                    </div>
+                </div>
+                <!-- 密码输入框 -->
+                <div class="mb-3">
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" class="form-control" id="password" placeholder="请输入密码">
+                    <div class="invalid-feedback" id="passwordError" style="display: none;">
+                        请输入密码！
+                    </div>
+                </div>
+                <div class="mb-2 text-end">
+                    <a href="/Account/ForgotPassword" class="text-decoration-underline small text-muted">
+                        忘记密码？
+                    </a>
+                </div>
+                <!-- 登录按钮 -->
+                <button type="button" class="btn btn-primary w-100" onclick="handleLogin()">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer - 绝对定位，与背景图重合 -->
+    <footer class="footer text-muted">
+        <div class="container text-center" style="color:gray;">
+            Copyright @DateTime.Now.Year.ToString() © 湖北三赢兴光电科技股份有限公司 - 信息系统部
+        </div>
+    </footer>
+
+    @Html.Partial("_GlobalUIComponents")
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            let isValid = true;
+
+            // 验证账号
+            if (!username) {
+                document.getElementById('username').classList.add('is-invalid');
+                document.getElementById('usernameError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('username').classList.remove('is-invalid');
+                document.getElementById('usernameError').style.display = 'none';
+            }
+
+            // 验证密码
+            if (!password) {
+                document.getElementById('password').classList.add('is-invalid');
+                document.getElementById('passwordError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('password').classList.remove('is-invalid');
+                document.getElementById('passwordError').style.display = 'none';
+            }
+
+            if (!isValid) {
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("Login", "Account")', // 生成 /Home/AddUser
+                type: 'POST',
+                data: {
+                    UserName: document.getElementById('username').value,
+                    Password: document.getElementById('password').value
+                },
+                beforeSend: function () {
+                    showLoading();
+                },
+                success: function (res) {
+                    hideLoading();
+                    if (res.code == 200) {
+                        // 跳转页面
+                        window.location.href = '@Url.Action("Index", "Home")';
+                    } else {
+                        // 登录失败，显示错误消息
+                        showWarning('登录失败：' + res.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    hideLoading();
+                    bsConfirm('系统异常' + error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

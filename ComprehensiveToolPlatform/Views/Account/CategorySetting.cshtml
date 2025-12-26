@@ -1,0 +1,1613 @@
+﻿@{
+    ViewData["Title"] = "类别配置";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid">
+    <!-- 筛选选项 -->
+    <div class="row mt-3 mb-3">
+        <div class="col-md-2">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="bi bi-plus-circle"></i> 新增类别
+            </button>
+        </div>
+        <div class="col-md-4 d-flex justify-content-between align-items-center">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showDisabled" checked>
+                <label class="form-check-label" for="showDisabled">显示已禁用的项目</label>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="搜索类别或应用..." id="searchInput">
+                <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div id="loading" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="text-muted mt-2">加载数据中...</p>
+    </div>
+
+    <!-- 类别容器 -->
+    <div id="categoriesContainer" class="row"></div>
+
+    <!-- 空状态提示 -->
+    <div id="emptyState" class="text-center py-5" style="display: none;">
+        <i class="bi bi-folder-x text-muted" style="font-size: 3rem;"></i>
+        <h4 class="mt-3 text-muted">暂无类别数据</h4>
+        <p class="text-muted">点击"新增类别"按钮开始配置</p>
+    </div>
+</div>
+
+<!-- 新增类别模态框 -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增类别</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">类别名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="categoryName" required maxlength="50">
+                        <div class="invalid-feedback">请输入类别名称</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categorySort" class="form-label">排序</label>
+                        <input type="number" class="form-control" id="categorySort" value="0" min="0">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="categoryIsActive" checked>
+                        <label class="form-check-label" for="categoryIsActive">是否启用</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveCategoryBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速编辑模态框 -->
+<div class="modal fade" id="quickEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalTitle">编辑</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quickEditForm" enctype="multipart/form-data">
+                    <input type="hidden" id="editId">
+                    <input type="hidden" id="editType">
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editName" required>
+                        <div class="invalid-feedback">请输入名称</div>
+                    </div>
+                    <div class="mb-3" id="editDescriptionField" style="display: none;">
+                        <label for="editDescription" class="form-label">描述</label>
+                        <textarea class="form-control" id="editDescription" rows="3"></textarea>
+                    </div>
+
+                    <!-- 简化的附件上传区域 -->
+                    <div class="mb-3" id="editAttachmentField" style="display: none;">
+                        <label for="editAttachment" class="form-label">应用程序附件</label>
+                        <div class="border rounded p-3 bg-light">
+                            <!-- 当前附件信息（编辑时显示） -->
+                            <div id="currentAttachmentInfo" class="mb-3" style="display: none;">
+                                <div class="alert alert-info py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-paperclip me-2"></i>
+                                            <span id="currentAttachmentName">无附件</span>
+                                        </div>
+                                        <div class="form-text">
+                                            重新上传将替换现有附件
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <input type="file" class="form-control" id="editAttachment">
+                                @* <div class="form-text">
+                                    点击保存时上传到SMB服务器，根据应用名称自动命名
+                                </div> *@
+                            </div>
+                        </div>
+
+                        <!-- 上传进度条（保存时显示） -->
+                        <div id="uploadProgressContainer" class="mt-2" style="display: none;">
+                            <div class="progress" style="height: 20px;">
+                                <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                    0%
+                                </div>
+                            </div>
+                            <div class="text-center small mt-1">
+                                <span id="uploadProgressText">正在准备上传...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editSort" class="form-label">排序</label>
+                        <input type="number" class="form-control" id="editSort" min="0">
+                    </div>
+                    <div class="mb-3" id="editCategoryField" style="display: none;">
+                        <label for="editCategoryId" class="form-label">所属类别 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editCategoryId" required>
+                            <option value="">请选择类别</option>
+                        </select>
+                        <div class="invalid-feedback">请选择类别</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="editIsActive">
+                        <label class="form-check-label" for="editIsActive">是否启用</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveQuickEditBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage">确定要删除吗？此操作不可恢复。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* 类别卡片样式 */
+        .category-card {
+            transition: all 0.2s ease;
+            margin-bottom: 1rem;
+        }
+
+            .category-card.disabled {
+                opacity: 0.7;
+                background-color: #f8f9fa !important;
+                border-color: #dee2e6 !important;
+            }
+
+                .category-card.disabled .card-header {
+                    background-color: #e9ecef !important;
+                }
+
+        .category-header-info {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .category-title {
+            margin-right: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .category-badges {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .category-sort-badge {
+            background-color: #6c757d;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        .category-count-badge {
+            background-color: #0dcaf0;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        .category-status-badge {
+            font-size: 0.75em;
+            padding: 2px 6px;
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+            .category-actions .btn {
+                padding: 4px 8px;
+                font-size: 0.875em;
+            }
+
+        /* 应用卡片样式 */
+        .app-card {
+            transition: all 0.2s ease;
+            cursor: move;
+            height: 100%;
+        }
+
+            .app-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 .25rem .5rem rgba(0,0,0,.15) !important;
+            }
+
+            .app-card.disabled {
+                opacity: 0.6;
+                background-color: #f8f9fa !important;
+                border: 1px dashed #dee2e6 !important;
+            }
+
+                .app-card.disabled .card-body {
+                    color: #6c757d;
+                }
+
+                .app-card.disabled .app-title {
+                    color: #6c757d;
+                }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .app-title-wrapper {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .app-title {
+            font-weight: 600;
+            margin-right: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        /* 应用图片样式 - 显示在名称左边 */
+        .app-icon {
+            height: 25px;
+            width: 25px;
+            object-fit: contain;
+            margin-right: 10px;
+            flex-shrink: 0;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+
+        .app-icon-placeholder {
+            height: 25px;
+            width: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #6c757d;
+            border: 1px dashed #dee2e6;
+            border-radius: 4px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+            .app-icon-placeholder i {
+                font-size: 1rem;
+                opacity: 0.7;
+            }
+
+        .app-status-badge {
+            font-size: 0.75em;
+            padding: 2px 6px;
+            flex-shrink: 0;
+        }
+
+        .app-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+            .app-actions .btn {
+                padding: 2px 6px;
+                font-size: 0.8em;
+            }
+
+        .app-details {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+
+        .app-description {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            max-height: 60px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        .app-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        /* 排序相关样式 */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #e9ecef;
+        }
+
+        .sortable-chosen {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            transform: scale(1.02);
+            z-index: 1000;
+        }
+
+        .sortable-drag {
+            cursor: grabbing;
+        }
+
+        .sorting-active {
+            border: 2px dashed #007bff;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #6c757d;
+            transition: color 0.2s;
+        }
+
+            .drag-handle:hover {
+                color: #495057;
+            }
+
+            .drag-handle:active {
+                cursor: grabbing;
+            }
+
+        .category-drag-handle {
+            font-size: 1.2rem;
+        }
+
+        .app-drag-handle {
+            font-size: 1rem;
+        }
+
+        /* 进度条样式 */
+        .progress {
+            position: relative;
+        }
+
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: #000;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
+        }
+
+        /* 模态框按钮状态 */
+        .btn-saving {
+            position: relative;
+            padding-left: 2.5rem;
+        }
+
+            .btn-saving:before {
+                content: "";
+                position: absolute;
+                left: 0.75rem;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 1rem;
+                height: 1rem;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spinner 0.6s linear infinite;
+            }
+
+        @@keyframes spinner {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/js/sortable.js"></script>
+    <script>
+        $(document).ready(function () {
+            let categories = [];
+            let categorySortables = {};
+            let deleteType = '';
+            let deleteId = 0;
+            let isDragging = false;
+            let appSortables = {};
+
+            // 新增：附件相关变量
+            let selectedFile = null;
+            let isUploading = false;
+            let originalFileName = null;
+            let hasExistingAttachment = false;
+
+            // 初始化页面
+            initPage();
+
+            function initPage() {
+                loadCategories();
+
+                // 显示/隐藏已禁用项目
+                $('#showDisabled').change(function () {
+                    renderCategories();
+                });
+
+                // 搜索功能
+                $('#searchInput').on('input', debounce(function () {
+                    filterData();
+                }, 300));
+
+                $('#clearSearchBtn').click(function () {
+                    $('#searchInput').val('');
+                    filterData();
+                });
+
+                // 新增类别
+                $('#saveCategoryBtn').click(saveNewCategory);
+
+                // 新增应用按钮
+                $('#addAppBtn').click(function () {
+                    showQuickEditModal('application', null);
+                });
+
+                // 快速编辑保存
+                $('#saveQuickEditBtn').click(saveQuickEdit);
+
+                // 确认删除
+                $('#confirmDeleteBtn').click(confirmDelete);
+
+                // 事件委托绑定
+                $(document)
+                    .on('click', '.edit-category-btn', function (e) {
+                        e.stopPropagation();
+                        const id = $(this).data('id');
+                        showQuickEditModal('category', id);
+                    })
+                    .on('click', '.edit-app-btn', function (e) {
+                        e.stopPropagation();
+                        const id = $(this).data('id');
+                        showQuickEditModal('application', id);
+                    })
+                    .on('click', '.toggle-category-btn', function (e) {
+                        e.stopPropagation();
+                        const id = $(this).data('id');
+                        toggleCategoryStatus(id);
+                    })
+                    .on('click', '.toggle-app-btn', function (e) {
+                        e.stopPropagation();
+                        const id = $(this).data('id');
+                        toggleApplicationStatus(id);
+                    })
+                    .on('click', '.delete-category-btn', function (e) {
+                        e.stopPropagation();
+                        deleteType = 'category';
+                        deleteId = $(this).data('id');
+                        const name = $(this).data('name');
+                        $('#deleteConfirmMessage').text(`确定要删除类别 "${name}" 吗？此操作不可恢复。`);
+                        $('#deleteConfirmModal').modal('show');
+                    })
+                    .on('click', '.delete-app-btn', function (e) {
+                        e.stopPropagation();
+                        deleteType = 'application';
+                        deleteId = $(this).data('id');
+                        const name = $(this).data('name');
+                        $('#deleteConfirmMessage').text(`确定要删除应用 "${name}" 吗？此操作不可恢复。`);
+                        $('#deleteConfirmModal').modal('show');
+                    })
+                    .on('click', '.add-app-to-category-btn', function (e) {
+                        e.stopPropagation();
+                        const categoryId = $(this).data('category-id');
+                        showQuickEditModal('application', null);
+                        setTimeout(() => {
+                            $('#editCategoryId').val(categoryId);
+                        }, 100);
+                    });
+
+                // 新增：附件相关事件绑定
+                initAttachmentEvents();
+            }
+
+            // 新增：初始化附件相关事件
+            function initAttachmentEvents() {
+                // 文件选择变化
+                $('#editAttachment').on('change', function (e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        selectedFile = file;
+                        originalFileName = file.name;
+                        console.log('文件已选择:', file.name, '大小:', formatFileSize(file.size));
+                    } else {
+                        selectedFile = null;
+                        originalFileName = null;
+                    }
+                });
+            }
+
+            // 新增：上传文件（在保存时调用）
+            function uploadFile(file, appName, appId) {
+                return new Promise((resolve, reject) => {
+                    if (!file) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('appName', appName || '未命名');
+                    formData.append('appId', appId || '');
+
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', function (e) {
+                        if (e.lengthComputable) {
+                            const percentComplete = Math.round((e.loaded * 100) / e.total);
+                            $('#uploadProgressBar').css('width', percentComplete + '%').text(percentComplete + '%');
+                            $('#uploadProgressText').text(`上传中... ${percentComplete}%`);
+                        }
+                    });
+
+                    xhr.addEventListener('load', function () {
+                        if (xhr.status === 200) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.success) {
+                                    resolve(response.data);
+                                } else {
+                                    reject(new Error(response.message || '上传失败'));
+                                }
+                            } catch (e) {
+                                reject(new Error('解析响应失败: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error('服务器错误: ' + xhr.status));
+                        }
+                    });
+
+                    xhr.addEventListener('error', function () {
+                        reject(new Error('网络错误，请检查连接'));
+                    });
+
+                    xhr.addEventListener('abort', function () {
+                        reject(new Error('上传已取消'));
+                    });
+
+                    xhr.open('POST', '/account/application-attachment');
+                    xhr.send(formData);
+                });
+            }
+
+            // 新增：格式化文件大小（用于日志）
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            // 防抖函数
+            function debounce(func, wait) {
+                let timeout;
+                return function () {
+                    const context = this;
+                    const args = arguments;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(context, args), wait);
+                };
+            }
+
+            // 加载类别数据
+            function loadCategories() {
+                $('#loading').show();
+                $('#emptyState').hide();
+
+                $.ajax({
+                    url: '/account/categories/lite',
+                    type: 'GET',
+                    success: function (response) {
+                        categories = response.data;
+                        loadApplicationsForCategories();
+                    },
+                    error: function (xhr) {
+                        console.error('加载类别失败:', xhr.responseText);
+                        $('#loading').hide();
+                        $('#emptyState').show();
+                    }
+                });
+            }
+
+            // 为每个类别加载应用
+            function loadApplicationsForCategories() {
+                const promises = categories.map(category => {
+                    return new Promise((resolve) => {
+                        $.ajax({
+                            url: `/account/applications/${category.id}`,
+                            type: 'GET',
+                            success: function (apps) {
+                                category.applications = apps.data || [];
+                                resolve();
+                            },
+                            error: function () {
+                                category.applications = [];
+                                resolve();
+                            }
+                        });
+                    });
+                });
+
+                Promise.all(promises).then(() => {
+                    renderCategories();
+                    $('#loading').hide();
+                });
+            }
+
+            // 渲染所有类别
+            function renderCategories() {
+                const showDisabled = $('#showDisabled').prop('checked');
+                const searchTerm = $('#searchInput').val().toLowerCase().trim();
+
+                let filteredCategories = [...categories];
+
+                // 筛选类别
+                if (!showDisabled) {
+                    filteredCategories = filteredCategories.filter(c => c.isActive);
+                }
+
+                if (searchTerm) {
+                    filteredCategories = filteredCategories.filter(category => {
+                        const nameMatch = category.name.toLowerCase().includes(searchTerm);
+                        const appMatch = category.applications?.some(app =>
+                            app.name.toLowerCase().includes(searchTerm) ||
+                            (app.description && app.description.toLowerCase().includes(searchTerm))
+                        );
+                        return nameMatch || appMatch;
+                    });
+                }
+
+                if (filteredCategories.length === 0) {
+                    $('#categoriesContainer').hide();
+                    $('#emptyState').show();
+                    return;
+                }
+
+                $('#emptyState').hide();
+                $('#categoriesContainer').show().empty();
+
+                // 渲染每个类别
+                filteredCategories.forEach(category => {
+                    const categoryHtml = renderCategory(category, showDisabled, searchTerm);
+                    $('#categoriesContainer').append(categoryHtml);
+                });
+
+                // 初始化拖拽排序
+                setTimeout(() => {
+                    initSortable();
+                }, 100);
+
+                $('#loading').hide();
+            }
+
+            // 更新类别排序
+            function updateCategorySortOrder() {
+                const categoryElements = $('#categoriesContainer > .col-12');
+                const sortUpdates = [];
+
+                categoryElements.each(function (index) {
+                    const categoryId = $(this).find('.category-card').attr('id').replace('category-', '');
+                    sortUpdates.push({
+                        Id: categoryId,
+                        Sort: index
+                    });
+                });
+
+                // 更新本地数据
+                sortUpdates.forEach(update => {
+                    const category = categories.find(c => c.id === update.id);
+                    if (category) {
+                        category.sort = update.sort;
+                    }
+                });
+
+                // 发送到服务器
+                updateCategoriesSort(sortUpdates);
+            }
+
+            // 更新应用程序排序
+            function updateApplicationSortOrder(categoryId) {
+                const container = document.getElementById(`apps-container-${categoryId}`);
+                if (!container) return;
+
+                const appElements = $(container).find('.app-card');
+                const sortUpdates = [];
+
+                appElements.each(function (index) {
+                    const appId = $(this).data('id');
+                    sortUpdates.push({
+                        Id: appId,
+                        Sort: index
+                    });
+                });
+
+                // 更新本地数据
+                const category = categories.find(c => c.id === categoryId);
+                if (category && category.applications) {
+                    sortUpdates.forEach(update => {
+                        const app = category.applications.find(a => a.id === update.id);
+                        if (app) {
+                            app.sort = update.sort;
+                        }
+                    });
+                }
+
+                // 发送到服务器
+                updateApplicationsSort(categoryId, sortUpdates);
+            }
+
+            // 发送类别排序更新到服务器
+            function updateCategoriesSort(sortUpdates) {
+                if (sortUpdates.length === 0) return;
+
+                $.ajax({
+                    url: '/account/categories/update-sort',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(sortUpdates),
+                    success: function (response) {
+                        if (response.success) {
+                            // 更新成功，更新页面显示
+                            sortUpdates.forEach(update => {
+                                const $badge = $(`#category-${update.id} .category-sort-badge`);
+                                if ($badge.length) {
+                                    $badge.text(update.sort);
+                                }
+                            });
+
+                            // 显示成功提示
+                            showToast('类别排序已更新', 'success');
+                        } else {
+                            showToast('类别排序更新失败: ' + response.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        showToast('类别排序更新失败，请重试', 'error');
+                        console.error('更新类别排序失败:', xhr.responseText);
+                    }
+                });
+            }
+
+            // 发送应用排序更新到服务器
+            function updateApplicationsSort(categoryId, sortUpdates) {
+                if (sortUpdates.length === 0) return;
+
+                $.ajax({
+                    url: `/account/applications/update-sort-by-category/${categoryId}`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(sortUpdates),
+                    success: function (response) {
+                        if (response.success) {
+                            // 更新成功，更新页面显示
+                            sortUpdates.forEach(update => {
+                                const $app = $(`#app-${update.id}`);
+                                if ($app.length) {
+                                    $app.find('.app-footer span:first-child').html(`
+                                                    <i class="bi bi-sort-numeric-down"></i> 排序: ${update.sort}
+                                                `);
+                                }
+                            });
+
+                            // 显示成功提示
+                            showToast('应用排序已更新', 'success');
+                        } else {
+                            showToast('应用排序更新失败: ' + response.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        showToast('应用排序更新失败，请重试', 'error');
+                        console.error('更新应用排序失败:', xhr.responseText);
+                    }
+                });
+            }
+
+            // 显示提示消息
+            function showToast(message, type = 'info') {
+                // 移除现有的提示
+                $('.custom-toast').remove();
+
+                const toastHtml = `
+                                <div class="custom-toast alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed"
+                                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                                    ${message}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            `;
+
+                $('body').append(toastHtml);
+
+                // 3秒后自动消失
+                setTimeout(() => {
+                    $('.custom-toast').alert('close');
+                }, 3000);
+            }
+
+            // 渲染单个类别
+            function renderCategory(category, showDisabled, searchTerm) {
+                const isDisabled = !category.isActive;
+                const categoryHtml = `
+                                <div class="col-12 mb-3">
+                                    <div class="card category-card ${isDisabled ? 'disabled' : ''}" id="category-${category.id}">
+                                        <div class="card-header category-header d-flex justify-content-between align-items-center">
+                                            <div class="category-header-info">
+                                                <span class="drag-handle category-drag-handle me-1" title="拖动排序">
+                                                    <i class="bi bi-grip-vertical"></i>
+                                                </span>
+                                                <span class="category-title">${category.name}</span>
+                                                <div class="category-badges">
+                                                    <span class="badge category-sort-badge" title="排序">${category.sort}</span>
+                                                    ${isDisabled ? '<span class="badge bg-secondary category-status-badge">已禁用</span>' : ''}
+                                                </div>
+                                            </div>
+                                            <div class="category-actions">
+                                                <button class="btn btn-sm btn-outline-primary add-app-to-category-btn"
+                                                        data-category-id="${category.id}"
+                                                        title="新增应用">
+                                                    <i class="bi bi-plus-circle"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning edit-category-btn"
+                                                        data-id="${category.id}"
+                                                        title="编辑类别">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary toggle-category-btn"
+                                                        data-id="${category.id}"
+                                                        data-current="${category.isActive}"
+                                                        title="${category.isActive ? '禁用' : '启用'}">
+                                                    <i class="bi ${category.isActive ? 'bi-pause' : 'bi-play'}"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger delete-category-btn"
+                                                        data-id="${category.id}"
+                                                        data-name="${category.name}"
+                                                        title="删除类别">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3 d-flex justify-content-between align-items-center">
+                                                <span class="text-muted small">
+                                                    <i class="bi bi-arrow-up-down"></i> 拖动下方应用可调整顺序
+                                                </span>
+                                            </div>
+                                            <div class="apps-container row" id="apps-container-${category.id}">
+                                                ${renderApplications(category, showDisabled, searchTerm)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                return categoryHtml;
+            }
+
+            // 渲染应用列表（增加附件显示）
+            function renderApplications(category, showDisabled, searchTerm) {
+                let apps = category.applications || [];
+
+                // 筛选应用
+                if (!showDisabled) {
+                    apps = apps.filter(a => a.isActive);
+                }
+
+                if (searchTerm) {
+                    apps = apps.filter(app =>
+                        app.name.toLowerCase().includes(searchTerm) ||
+                        (app.description && app.description.toLowerCase().includes(searchTerm))
+                    );
+                }
+
+                if (apps.length === 0) {
+                    return `
+                                    <div class="col-12">
+                                        <div class="alert alert-light text-center mb-0">
+                                            <i class="bi bi-inbox text-muted"></i>
+                                            <p class="mb-0 text-muted">暂无应用</p>
+                                        </div>
+                                    </div>
+                                `;
+                }
+
+                let html = '';
+                apps.forEach(app => {
+                    const isAppDisabled = !app.isActive;
+
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 app-card ${isAppDisabled ? 'disabled' : ''}"
+                                 id="app-${app.id}"
+                                 data-id="${app.id}"
+                                 data-category-id="${category.id}">
+                                <div class="card-body">
+                                    <div class="app-header">
+                                        <div class="app-title-wrapper">
+                                            <span class="drag-handle app-drag-handle me-2" title="拖动排序">
+                                                <i class="bi bi-grip-vertical"></i>
+                                            </span>
+
+                                            <!-- 应用图标 - 显示在名称左边 -->
+                                            <img src="/appLogo/${encodeURIComponent(app.name)}.png" class="app-icon">
+
+                                            <span class="app-title" title="${app.name}">${app.name}</span>
+                                            ${isAppDisabled ?
+                                            '<span class="badge bg-secondary app-status-badge" title="已禁用">禁用</span>' :
+                                            '<span class="badge bg-success app-status-badge" title="已启用">启用</span>'
+                                        }
+                                        </div>
+                                        <div class="app-actions">
+                                            <button class="btn btn-sm btn-outline-warning edit-app-btn"
+                                                    data-id="${app.id}"
+                                                    title="编辑">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary toggle-app-btn"
+                                                    data-id="${app.id}"
+                                                    data-current="${app.isActive}"
+                                                    title="${app.isActive ? '禁用' : '启用'}">
+                                                <i class="bi ${app.isActive ? 'bi-pause' : 'bi-play'}"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger delete-app-btn"
+                                                    data-id="${app.id}"
+                                                    data-name="${app.name}"
+                                                    title="删除">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="app-details">
+                                        ${app.description ? `
+                                            <div class="app-description" title="${app.description}">
+                                                ${app.description}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                                `;
+                });
+
+                return html;
+            }
+
+            // 初始化拖拽排序
+            function initSortable() {
+                // 销毁现有的 Sortable 实例
+                if (window.categorySortable) {
+                    window.categorySortable.destroy();
+                }
+
+                Object.values(window.appSortables || {}).forEach(instance => {
+                    if (instance && instance.destroy) {
+                        instance.destroy();
+                    }
+                });
+
+                window.appSortables = {};
+
+                // 初始化类别拖拽排序
+                const categoriesContainer = document.getElementById('categoriesContainer');
+                if (categoriesContainer) {
+                    window.categorySortable = new Sortable(categoriesContainer, {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        handle: '.category-drag-handle',
+                        onStart: function () {
+                            isDragging = true;
+                            $(this.el).addClass('sorting-active');
+                        },
+                        onEnd: function (evt) {
+                            isDragging = false;
+                            $(this.el).removeClass('sorting-active');
+                            updateCategorySortOrder();
+                        }
+                    });
+                }
+
+                // 为每个类别下的应用容器初始化排序
+                $('.apps-container').each(function () {
+                    const containerId = $(this).attr('id');
+                    const categoryId = containerId.replace('apps-container-', '');
+
+                    window.appSortables[categoryId] = new Sortable(document.getElementById(containerId), {
+                        group: `apps-${categoryId}`,
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        handle: '.app-drag-handle',
+                        onStart: function () {
+                            isDragging = true;
+                            $(this.el).addClass('sorting-active');
+                        },
+                        onEnd: function (evt) {
+                            isDragging = false;
+                            $(this.el).removeClass('sorting-active');
+                            updateApplicationSortOrder(categoryId);
+                        }
+                    });
+                });
+            }
+
+            // 过滤数据
+            function filterData() {
+                renderCategories();
+            }
+
+            // 显示快速编辑模态框
+            function showQuickEditModal(type, id) {
+                // 重置附件相关状态
+                selectedFile = null;
+                isUploading = false;
+                originalFileName = null;
+                hasExistingAttachment = false;
+
+                $('#editId').val(id || '');
+                $('#editType').val(type);
+
+                // 重置表单和预览
+                $('#quickEditForm')[0].reset();
+                $('#quickEditForm .is-invalid').removeClass('is-invalid');
+                $('#currentAttachmentInfo').hide();
+                $('#uploadProgressContainer').hide();
+                $('#saveQuickEditBtn').prop('disabled', false).text('保存');
+
+                if (type === 'category') {
+                    $('#editModalTitle').text(id ? '编辑类别' : '新增类别');
+                    $('#editDescriptionField').hide();
+                    $('#editCategoryField').hide();
+                    $('#editAttachmentField').hide();
+
+                    if (id) {
+                        const category = categories.find(c => c.id === id);
+                        if (category) {
+                            $('#editName').val(category.name || '');
+                            $('#editSort').val(category.sort || 0);
+                            $('#editIsActive').prop('checked', Boolean(category.isActive));
+                        }
+                    } else {
+                        $('#editName').val('');
+                        $('#editSort').val(0);
+                        $('#editIsActive').prop('checked', true);
+                    }
+                } else {
+                    $('#editModalTitle').text(id ? '编辑应用' : '新增应用');
+                    $('#editDescriptionField').show();
+                    $('#editCategoryField').show();
+                    $('#editAttachmentField').show();
+
+                    // 加载类别下拉框选项
+                    loadCategorySelectOptions();
+
+                    if (id) {
+                        // 查找应用数据
+                        let app = null;
+                        categories.forEach(category => {
+                            if (category.applications) {
+                                const foundApp = category.applications.find(a => a.id === id);
+                                if (foundApp) app = foundApp;
+                            }
+                        });
+
+                        if (app) {
+                            $('#editName').val(app.name || '');
+                            $('#editDescription').val(app.description || '');
+                            $('#editSort').val(app.sort || 0);
+                            $('#editCategoryId').val(app.categoryId || '');
+                            $('#editIsActive').prop('checked', Boolean(app.isActive));
+
+                            // 显示当前附件信息
+                            if (app.name && app.fileType) {
+                                hasExistingAttachment = true;
+                                $('#currentAttachmentName').text(app.name + app.fileType || '已有附件');
+                                $('#currentAttachmentInfo').show();
+                            }
+                        }
+                    } else {
+                        $('#editName').val('');
+                        $('#editDescription').val('');
+                        $('#editSort').val(0);
+                        $('#editCategoryId').val('');
+                        $('#editIsActive').prop('checked', true);
+                    }
+                }
+
+                $('#quickEditModal').modal('show');
+            }
+
+            // 加载类别下拉框选项
+            function loadCategorySelectOptions() {
+                const select = $('#editCategoryId');
+                select.empty();
+                select.append('<option value="">请选择类别</option>');
+
+                categories.forEach(category => {
+                    select.append(`<option value="${category.id}">${category.name}</option>`);
+                });
+            }
+
+            // 保存快速编辑（主要修改点：在保存时上传文件）
+            async function saveQuickEdit() {
+                const type = $('#editType').val();
+                const id = $('#editId').val();
+                const name = $('#editName').val().trim();
+                const sort = parseInt($('#editSort').val()) || 0;
+                const isActive = $('#editIsActive').prop('checked');
+
+                // 验证
+                if (!name) {
+                    $('#editName').addClass('is-invalid');
+                    return;
+                }
+
+                if (type === 'application') {
+                    const categoryId = $('#editCategoryId').val();
+                    const description = $('#editDescription').val().trim();
+
+                    if (!categoryId) {
+                        $('#editCategoryId').addClass('is-invalid');
+                        return;
+                    }
+
+                    // 防止重复点击
+                    if (isUploading) {
+                        return;
+                    }
+
+                    isUploading = true;
+                    $('#saveQuickEditBtn').prop('disabled', true).addClass('btn-saving').text('保存中...');
+
+                    try {
+                        let uploadResult = null;
+
+                        // 如果有选择的文件，先上传文件
+                        if (selectedFile) {
+                            $('#uploadProgressContainer').show();
+                            $('#uploadProgressBar').css('width', '0%').text('0%');
+                            $('#uploadProgressText').text('正在上传附件...');
+
+                            uploadResult = await uploadFile(selectedFile, name, id);
+
+                            $('#uploadProgressContainer').hide();
+                        }
+
+                        // 准备应用数据
+                        const appData = {
+                            Name: name,
+                            Description: description,
+                            Sort: sort,
+                            IsActive: isActive,
+                            CategoryId: categoryId
+                        };
+
+                        // 如果有上传结果，添加到数据中
+                        if (uploadResult) {
+                            appData.FileType = uploadResult.fileType;
+                            appData.FileSize = uploadResult.fileSize;
+                        } else if (id && hasExistingAttachment) {
+                            // 编辑时没有选择新文件，但已有附件，保留原有附件信息
+                            let app = null;
+                            categories.forEach(category => {
+                                if (category.applications) {
+                                    const foundApp = category.applications.find(a => a.id === id);
+                                    if (foundApp) app = foundApp;
+                                }
+                            });
+
+                            if (app) {
+                                appData.FileType = app.fileType;
+                                appData.FileSize = app.fileSize;
+                            }
+                        }
+
+                        if (id) {
+                            // 更新应用
+                            appData.Id = id;
+                            await updateApplicationInDb(appData);
+                        } else {
+                            // 新增应用
+                            await saveNewApplication(appData);
+                        }
+
+                        // 保存成功，关闭模态框
+                        $('#quickEditModal').modal('hide');
+                        loadCategories();
+
+                    } catch (error) {
+                        console.error('保存失败:', error);
+                        showToast('保存失败: ' + error.message, 'error');
+                    } finally {
+                        isUploading = false;
+                        $('#saveQuickEditBtn').prop('disabled', false).removeClass('btn-saving').text('保存');
+                        $('#uploadProgressContainer').hide();
+                    }
+                } else {
+                    // 类别（不需要上传文件）
+                    if (id) {
+                        // 更新类别
+                        const category = categories.find(c => c.id === id);
+                        if (category) {
+                            category.name = name;
+                            category.sort = sort;
+                            category.isActive = isActive;
+
+                            updateCategoryInDb(category, true);
+                        }
+                    } else {
+                        // 新增类别
+                        const newCategory = {
+                            name: name,
+                            sort: sort,
+                            isActive: isActive
+                        };
+
+                        saveNewCategoryFromModal(newCategory);
+                    }
+                }
+            }
+
+            // 保存新类别（从模态框）
+            function saveNewCategoryFromModal(categoryData) {
+                $.ajax({
+                    url: '/account/category',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(categoryData),
+                    success: function (response) {
+                        $('#quickEditModal').modal('hide');
+                        loadCategories();
+                    },
+                    error: function (xhr) {
+                        alert('保存失败: ' + xhr.responseText);
+                    }
+                });
+            }
+
+            // 保存新类别（从独立模态框）
+            function saveNewCategory() {
+                const name = $('#categoryName').val().trim();
+                const sort = $('#categorySort').val();
+                const isActive = $('#categoryIsActive').prop('checked');
+
+                if (!name) {
+                    $('#categoryName').addClass('is-invalid');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/account/category',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        name: name,
+                        sort: parseInt(sort),
+                        isActive: isActive
+                    }),
+                    success: function (response) {
+                        $('#addCategoryModal').modal('hide');
+                        loadCategories();
+                    },
+                    error: function (xhr) {
+                        alert('保存失败: ' + xhr.responseText);
+                    }
+                });
+            }
+
+            // 保存新应用（增加附件字段）
+            function saveNewApplication(appData) {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: '/account/application',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(appData),
+                        success: function (response) {
+                            resolve(response);
+                        },
+                        error: function (xhr) {
+                            reject(new Error(xhr.responseText || '保存失败'));
+                        }
+                    });
+                });
+            }
+
+            // 更新类别到数据库
+            function updateCategoryInDb(category, reload = false) {
+                $.ajax({
+                    url: `/account/category/${category.id}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        name: category.name,
+                        sort: category.sort,
+                        isActive: category.isActive
+                    }),
+                    success: function (response) {
+                        if (reload) {
+                            $('#quickEditModal').modal('hide');
+                            loadCategories();
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('更新类别失败:', xhr.responseText);
+                        if (reload) loadCategories();
+                    }
+                });
+            }
+
+            // 更新应用到数据库（增加附件字段）
+            function updateApplicationInDb(app) {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: `/account/application/${app.Id}`,
+                        type: 'PUT',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            name: app.Name,
+                            description: app.Description || '',
+                            sort: app.Sort,
+                            isActive: app.IsActive,
+                            categoryId: app.CategoryId,
+                            fileType: app.FileType || null,
+                            fileSize: app.FileSize || 0
+                        }),
+                        success: function (response) {
+                            resolve(response);
+                        },
+                        error: function (xhr) {
+                            reject(new Error(xhr.responseText || '更新失败'));
+                        }
+                    });
+                });
+            }
+
+            // 切换类别状态
+            function toggleCategoryStatus(id) {
+                const category = categories.find(c => c.id === id);
+                if (!category) {
+                    console.error('未找到类别:', id);
+                    return;
+                }
+
+                const newStatus = !category.isActive;
+
+                $.ajax({
+                    url: `/account/category/${id}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        name: category.name,
+                        sort: category.sort,
+                        isActive: newStatus
+                    }),
+                    success: function (response) {
+                        // 更新本地数据
+                        category.isActive = newStatus;
+
+                        // 更新UI
+                        const $card = $(`#category-${id}`);
+                        if ($card.length) {
+                            // 更新按钮图标
+                            const $toggleBtn = $card.find('.toggle-category-btn');
+                            $toggleBtn.attr('data-current', newStatus)
+                                .attr('title', newStatus ? '禁用' : '启用')
+                                .find('i')
+                                .removeClass('bi-pause bi-play')
+                                .addClass(newStatus ? 'bi-pause' : 'bi-play');
+
+                            // 更新卡片样式
+                            if (newStatus) {
+                                $card.removeClass('disabled');
+                            } else {
+                                $card.addClass('disabled');
+                            }
+
+                            // 更新状态徽章
+                            if (newStatus) {
+                                $card.find('.category-badges .bg-secondary').remove();
+                            } else {
+                                if (!$card.find('.category-badges .bg-secondary').length) {
+                                    $card.find('.category-badges').append(
+                                        '<span class="badge bg-secondary category-status-badge">已禁用</span>'
+                                    );
+                                }
+                            }
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('切换类别状态失败:', xhr.responseText);
+                        alert('操作失败，请刷新页面重试');
+                    }
+                });
+            }
+
+            // 切换应用状态
+            function toggleApplicationStatus(id) {
+                // 查找应用
+                let app = null;
+                let categoryId = null;
+
+                categories.forEach(category => {
+                    if (category.applications) {
+                        const foundApp = category.applications.find(a => a.id === id);
+                        if (foundApp) {
+                            app = foundApp;
+                            categoryId = category.id;
+                        }
+                    }
+                });
+
+                if (!app) {
+                    console.error('未找到应用:', id);
+                    return;
+                }
+
+                const newStatus = !app.isActive;
+
+                $.ajax({
+                    url: `/account/application/${id}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        name: app.name,
+                        description: app.description || '',
+                        sort: app.sort,
+                        isActive: newStatus,
+                        categoryId: app.categoryId,
+                    }),
+                    success: function (response) {
+                        // 更新本地数据
+                        app.isActive = newStatus;
+
+                        // 更新UI
+                        const $card = $(`#app-${id}`);
+                        if ($card.length) {
+                            // 更新状态徽章
+                            const statusHtml = newStatus ?
+                                '<span class="badge bg-success app-status-badge" title="已启用">启用</span>' :
+                                '<span class="badge bg-secondary app-status-badge" title="已禁用">禁用</span>';
+
+                            // 更新按钮
+                            const $toggleBtn = $card.find('.toggle-app-btn');
+                            $toggleBtn.attr('data-current', newStatus)
+                                .attr('title', newStatus ? '禁用' : '启用')
+                                .find('i')
+                                .removeClass('bi-pause bi-play')
+                                .addClass(newStatus ? 'bi-pause' : 'bi-play');
+
+                            // 更新卡片样式
+                            if (newStatus) {
+                                $card.removeClass('disabled');
+                            } else {
+                                $card.addClass('disabled');
+                            }
+
+                            // 更新状态徽章
+                            $card.find('.app-status-badge').replaceWith(statusHtml);
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('切换应用状态失败:', xhr.responseText);
+                        alert('操作失败，请刷新页面重试');
+                    }
+                });
+            }
+
+            // 确认删除
+            function confirmDelete() {
+                if (deleteType === 'category') {
+                    deleteCategory(deleteId);
+                } else {
+                    deleteApplication(deleteId);
+                }
+                $('#deleteConfirmModal').modal('hide');
+            }
+
+            // 删除类别
+            function deleteCategory(id) {
+                $.ajax({
+                    url: `/account/category/${id}`,
+                    type: 'DELETE',
+                    success: function () {
+                        categories = categories.filter(c => c.id !== id);
+                        renderCategories();
+                    },
+                    error: function (xhr) {
+                        alert('删除失败: ' + xhr.responseText);
+                    }
+                });
+            }
+
+            // 删除应用
+            function deleteApplication(id) {
+                $.ajax({
+                    url: `/account/application/${id}`,
+                    type: 'DELETE',
+                    success: function () {
+                        categories.forEach(category => {
+                            if (category.applications) {
+                                category.applications = category.applications.filter(a => a.id !== id);
+                            }
+                        });
+                        renderCategories();
+                    },
+                    error: function (xhr) {
+                        alert('删除失败: ' + xhr.responseText);
+                    }
+                });
+            }
+
+            // 模态框关闭时重置
+            $('.modal').on('hidden.bs.modal', function () {
+                $(this).find('form')[0].reset();
+                $(this).find('.is-invalid').removeClass('is-invalid');
+                $('#currentAttachmentInfo').hide();
+                $('#uploadProgressContainer').hide();
+                $('#saveQuickEditBtn').prop('disabled', false).removeClass('btn-saving').text('保存');
+            });
+        });
+    </script>
+}

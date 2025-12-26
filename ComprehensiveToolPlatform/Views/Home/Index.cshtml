@@ -1,0 +1,947 @@
+﻿@using ComprehensiveToolPlatform.Repository.Models
+@using ComprehensiveToolPlatform.Service
+@model HomeViewVo
+@{
+    ViewData["Title"] = "首页";
+}
+
+<style>
+    :root {
+        --primary-bg: #ffffff;
+        --card-bg: rgba(255, 255, 255, 0.9);
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --accent: #3b82f6;
+        --accent-hover: #60a5fa;
+        --border: rgba(100, 116, 139, 0.15);
+        --shadow: rgba(0, 0, 0, 0.08);
+    }
+
+    #main {
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+        color: var(--text-primary);
+        min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    /* 左侧目录样式 - Glassmorphism effect */
+    .sidebar {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-right: 1px solid var(--border);
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        overflow-y: auto;
+        padding: 20px 0;
+        box-shadow: 0 0 20px var(--shadow);
+        z-index: 10;
+    }
+
+        .sidebar .nav-link {
+            color: var(--text-secondary);
+            padding: 12px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+            .sidebar .nav-link:hover {
+                color: var(--accent);
+                background: rgba(59, 130, 246, 0.08);
+            }
+
+            .sidebar .nav-link.active {
+                background: linear-gradient(90deg, rgba(59, 130, 246, 0.12), transparent);
+                color: var(--accent);
+                font-weight: 600;
+            }
+
+                .sidebar .nav-link.active::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    height: 100%;
+                    width: 4px;
+                    background: var(--accent);
+                    border-radius: 0 2px 2px 0;
+                }
+
+            .sidebar .nav-link i {
+                margin-right: 12px;
+                width: 20px;
+                text-align: center;
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar .nav-link:hover i {
+                transform: translateY(-2px);
+            }
+
+    /* 主内容样式 */
+    .main-content {
+        padding: 30px;
+    }
+
+    .section-title {
+        color: var(--text-primary);
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-weight: 600;
+        font-size: 1.8rem;
+        position: relative;
+    }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            border-radius: 3px;
+        }
+
+    /* 应用卡片样式 - Glassmorphism */
+    .app-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 25px 15px;
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        height: 100%;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px var(--shadow);
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+        cursor: pointer;
+    }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+            z-index: -1;
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .app-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 8px 30px var(--shadow);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+            .app-card:hover::before {
+                opacity: 1;
+            }
+
+    /* 应用图片容器样式 */
+    .app-image-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 60px;
+        margin-bottom: 15px;
+    }
+
+    /* 应用图片样式 - 固定60*60尺寸 */
+    .app-image {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+        transition: all 0.3s ease;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .app-card:hover .app-image {
+        transform: scale(1.1);
+        filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3));
+    }
+
+    .app-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+    }
+
+    .app-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0;
+    }
+
+    /* 返回顶部按钮 */
+    .back-to-top {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid var(--accent);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 99;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px var(--shadow);
+    }
+
+        .back-to-top:hover {
+            background: rgba(59, 130, 246, 0.25);
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+        }
+
+        .back-to-top i {
+            color: var(--accent);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(241, 245, 249, 0.5);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--accent);
+        border-radius: 4px;
+    }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-hover);
+        }
+
+    /* 下载模态框样式 */
+    .download-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    }
+
+    .download-modal {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 16px;
+        padding: 25px;
+        min-width: 350px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        text-align: center;
+    }
+
+    .modal-title {
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--text-primary);
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .progress-container {
+        background: #e9ecef;
+        border-radius: 8px;
+        height: 10px;
+        margin-bottom: 15px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        border-radius: 8px;
+        transition: width 0.3s ease;
+        width: 0%;
+    }
+
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .progress-text {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .progress-stats {
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 13px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .btn-cancel {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 10px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+        .btn-cancel:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: translateY(-2px);
+        }
+
+    .btn-minimize {
+        background: rgba(156, 163, 175, 0.1);
+        color: #6b7280;
+        border: 1px solid rgba(156, 163, 175, 0.3);
+        padding: 10px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+        .btn-minimize:hover {
+            background: rgba(156, 163, 175, 0.2);
+            transform: translateY(-2px);
+        }
+
+    /* 文件详情样式 */
+    .file-details {
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+        word-break: break-all;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    /* 动画 */
+    @@keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes overlayFadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .download-overlay.show {
+        display: flex;
+        animation: overlayFadeIn 0.3s ease;
+    }
+
+        .download-overlay.show .download-modal {
+            animation: modalFadeIn 0.3s ease;
+        }
+
+    /* 响应式设计 */
+    @@media (max-width: 768px) {
+        .download-modal {
+            min-width: 280px;
+            padding: 20px;
+            margin: 0 15px;
+        }
+
+        .modal-buttons {
+            flex-direction: column;
+        }
+
+        .progress-info {
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+</style>
+
+<div id="main" tabindex="0">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 左侧目录 -->
+            <nav class="col-md-3 col-lg-2 sidebar" id="appNavbar">
+                <div class="position-sticky pt-3">
+                    <h5 class="px-3 mb-3" style="color: var(--text-primary); font-weight: 600;">
+                        <i class="bi bi-grid-3x3-gap" style="color: var(--accent);"></i> 应用分类
+                    </h5>
+                    <ul class="nav flex-column">
+                        @{
+                            var isFirstCategory = true;
+                        }
+                        @foreach (var category in Model.Categories)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @(isFirstCategory ? "active" : "")" href="#@category.Id">
+                                    @category.Name
+                                </a>
+                            </li>
+                            isFirstCategory = false;
+                        }
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-9 col-lg-10 main-content">
+                @{
+                    var firstCategoryId = Model.Categories.FirstOrDefault()?.Id;
+                }
+                @foreach (var category in Model.Categories)
+                {
+                    var categoryApps = Model.ApplicationsByCategory.ContainsKey(category.Id)
+                    ? Model.ApplicationsByCategory[category.Id]
+                    : new List<Application>();
+
+                    <section id="@category.Id" class="mb-5 scroll-section">
+                        <h3 class="section-title">
+                            @category.Name
+                        </h3>
+                        <div class="row g-4">
+                            @if (categoryApps.Any())
+                            {
+                                foreach (var app in categoryApps)
+                                {
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <div class="app-card" onclick="DownloadApp('@app.Name', '@app.Description', '@app.FileType')">
+                                            <div class="app-image-container mb-3">
+                                                <img src="/appLogo/@(Uri.EscapeDataString(app.Name)).png" class="app-image" />
+                                            </div>
+                                            <div class="app-name">@app.Name</div>
+                                            <div class="app-description">@app.Description</div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        暂无应用
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+            </main>
+        </div>
+    </div>
+
+    <!-- 下载遮罩层和模态框 -->
+    <div class="download-overlay" id="downloadOverlay">
+        <div class="download-modal">
+            <div class="modal-title">
+                <i class="bi bi-download" style="color: var(--accent);"></i>
+                <span>正在下载...</span>
+            </div>
+
+            <div class="file-details">
+                <div class="file-name" id="fileName">文件名</div>
+                <div class="file-size" id="fileSize">文件大小: 计算中...</div>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="progress-info">
+                <div class="progress-text" id="progressText">0%</div>
+                <div class="progress-stats">
+                    <div id="speedText">速度: 0 KB/秒</div>
+                    <div id="timeText">剩余时间: 计算中...</div>
+                    <div id="downloadedText">已下载: 0 KB</div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                @* <button class="btn-minimize" onclick="minimizeDownload()">
+                <i class="bi bi-dash-circle me-2"></i>最小化
+                </button> *@
+                <button class="btn-cancel" onclick="cancelDownload()">
+                    <i class="bi bi-x-circle me-2"></i>取消下载
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 返回顶部按钮 -->
+    <div class="back-to-top" id="backToTop" onclick="scrollToTop()">
+        <i class="bi bi-arrow-up"></i>
+    </div>
+</div>
+@Html.Partial("_GlobalUIComponents")
+
+<script>
+    // 全局变量，用于管理下载
+    let currentDownload = {
+        xhr: null,
+        fileName: '',
+        totalSize: 0,
+        startTime: null,
+        isCancelled: false
+    };
+
+    // 页面加载完成后执行初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 重置滚动位置到顶部
+        window.scrollTo(0, 0);
+
+        // 手动设置第一个导航项为高亮（办公软件）
+        const navLinks = document.querySelectorAll('.sidebar .nav-link');
+        navLinks.forEach(link => link.classList.remove('active'));
+        const firstNavLink = document.querySelector('.sidebar .nav-link');
+        if (firstNavLink) {
+            firstNavLink.classList.add('active');
+        }
+    });
+
+    // 返回顶部功能
+    window.onscroll = function () {
+        scrollFunction();
+    };
+
+    function scrollFunction() {
+        const backToTopBtn = document.getElementById("backToTop");
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            backToTopBtn.style.display = "flex";
+        } else {
+            backToTopBtn.style.display = "none";
+        }
+
+        // 更新导航高亮
+        updateActiveNav();
+    }
+
+    function scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }
+
+    // 平滑滚动
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // 更新导航高亮状态
+    function updateActiveNav() {
+        const sections = document.querySelectorAll('.scroll-section');
+        const navLinks = document.querySelectorAll('.sidebar .nav-link');
+
+        let current = '';
+        const scrollPosition = window.scrollY + 150; // 增加偏移量，确保准确检测
+
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.clientHeight;
+            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        // 如果没有找到当前区域（在页面顶部），默认为第一个
+        if (!current && scrollPosition < 200) {
+            const firstSection = sections[0];
+            if (firstSection) {
+                current = firstSection.getAttribute('id');
+            }
+        }
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${current}`) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    // 下载应用
+    async function DownloadApp(fileName, description, fileType) {
+        // 重置下载状态
+        currentDownload = {
+            xhr: null,
+            fileName: fileName,
+            fileType: fileType,
+            totalSize: 0,
+            startTime: null,
+            isCancelled: false
+        };
+
+        // 显示下载模态框
+        const overlay = document.getElementById('downloadOverlay');
+        const fileNameElement = document.getElementById('fileName');
+        const fileSizeElement = document.getElementById('fileSize');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const speedText = document.getElementById('speedText');
+        const timeText = document.getElementById('timeText');
+        const downloadedText = document.getElementById('downloadedText');
+
+        fileNameElement.textContent = fileName;
+        if (description) {
+            fileSizeElement.textContent = description;
+        }
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        speedText.textContent = '速度: 0 KB/秒';
+        timeText.textContent = '剩余时间: 计算中...';
+        downloadedText.textContent = '已下载: 0 KB';
+
+        overlay.classList.add('show');
+
+        try {
+            // 1. 先获取文件信息
+            const fileInfoResponse = await fetch(`/home/fileinfo?filename=${encodeURIComponent(fileName+fileType)}`);
+            if (!fileInfoResponse.ok) {
+                const errorText = await fileInfoResponse.text();
+                throw new Error(errorText);
+            }
+
+            const fileInfo = await fileInfoResponse.json();
+            const totalSize = fileInfo.size;
+            currentDownload.totalSize = totalSize;
+
+            fileSizeElement.textContent = `文件大小: ${formatFileSize(totalSize)}`;
+
+            // 2. 开始下载文件
+            await startFileDownload(fileName, totalSize, fileType);
+        } catch (error) {
+            if (!currentDownload.isCancelled) {
+                showError('下载失败: ' + error.message);
+            }
+            overlay.classList.remove('show');
+        }
+    }
+
+    // 开始文件下载
+    function startFileDownload(fileName, totalSize, fileType) {
+        return new Promise((resolve, reject) => {
+            currentDownload.startTime = Date.now();
+            let lastLoaded = 0;
+            let lastTime = currentDownload.startTime;
+
+            fetch(`/home/download?filename=${encodeURIComponent(fileName + fileType)}`, {
+                method: 'GET',
+                signal: currentDownload.abortController?.signal
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`下载失败: ${response.status} ${response.statusText}`);
+                    }
+
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    const contentType = response.headers.get('Content-Type');
+                    const contentLength = response.headers.get('Content-Length');
+
+                    // 创建可读流
+                    const reader = response.body.getReader();
+                    const chunks = [];
+                    let receivedLength = 0;
+
+                    function read() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                return chunks;
+                            }
+
+                            chunks.push(value);
+                            receivedLength += value.length;
+
+                            // 更新进度
+                            if (currentDownload.isCancelled) {
+                                reader.cancel();
+                                return;
+                            }
+
+                            // 进度处理
+                            if (contentLength) {
+                                const percent = Math.round((receivedLength / contentLength) * 100);
+                                const currentTime = Date.now();
+                                const timeDiff = (currentTime - lastTime) / 1000;
+
+                                // 更新UI
+                                const progressBar = document.getElementById('progressBar');
+                                const progressText = document.getElementById('progressText');
+                                const speedText = document.getElementById('speedText');
+                                const timeText = document.getElementById('timeText');
+                                const downloadedText = document.getElementById('downloadedText');
+
+                                progressBar.style.width = percent + '%';
+                                progressText.textContent = `${percent}%`;
+                                downloadedText.textContent = `已下载: ${formatFileSize(receivedLength)}`;
+
+                                if (timeDiff > 0.5) {
+                                    const loadedDiff = receivedLength - lastLoaded;
+                                    const speed = loadedDiff / timeDiff;
+                                    const speedFormatted = formatFileSize(speed) + '/秒';
+                                    const remainingTime = calculateRemainingTime(receivedLength, contentLength, speed);
+
+                                    speedText.textContent = `速度: ${speedFormatted}`;
+                                    timeText.textContent = `剩余时间: ${remainingTime}`;
+
+                                    lastLoaded = receivedLength;
+                                    lastTime = currentTime;
+                                }
+                            }
+
+                            return read();
+                        });
+                    }
+
+                    return read().then(chunks => {
+                        // 合并所有chunks
+                        const blob = new Blob(chunks, { type: contentType });
+                        const url = window.URL.createObjectURL(blob);
+
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = fileName + fileType; // 确保包含文件扩展名
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        window.URL.revokeObjectURL(url);
+
+                        setTimeout(() => {
+                            document.getElementById('downloadOverlay').classList.remove('show');
+                            resolve();
+                        }, 500);
+                    });
+                })
+                .catch(error => {
+                    if (!currentDownload.isCancelled) {
+                        reject(error);
+                    }
+                });
+        });
+    }
+    // function startFileDownload(fileName, totalSize, fileType) {
+    //     return new Promise((resolve, reject) => {
+    //         const xhr = new XMLHttpRequest();
+    //         currentDownload.xhr = xhr;
+    //         currentDownload.startTime = Date.now();
+
+    //         let lastLoaded = 0;
+    //         let lastTime = currentDownload.startTime;
+
+    //         xhr.open('GET', `/home/download?filename=${encodeURIComponent(fileName + fileType)}`, true);
+    //         xhr.responseType = 'blob';
+
+    //         // 进度事件
+    //         xhr.addEventListener('progress', function (event) {
+    //             if (currentDownload.isCancelled) {
+    //                 xhr.abort();
+    //                 return;
+    //             }
+
+    //             if (event.lengthComputable) {
+    //                 const loaded = event.loaded;
+    //                 const total = event.total || totalSize;
+    //                 const percent = Math.round((loaded / total) * 100);
+
+    //                 // 更新UI
+    //                 const progressBar = document.getElementById('progressBar');
+    //                 const progressText = document.getElementById('progressText');
+    //                 const speedText = document.getElementById('speedText');
+    //                 const timeText = document.getElementById('timeText');
+    //                 const downloadedText = document.getElementById('downloadedText');
+
+    //                 progressBar.style.width = percent + '%';
+    //                 progressText.textContent = `${percent}%`;
+    //                 downloadedText.textContent = `已下载: ${formatFileSize(loaded)}`;
+
+    //                 // 计算下载速度
+    //                 const currentTime = Date.now();
+    //                 const timeDiff = (currentTime - lastTime) / 1000; // 秒
+
+    //                 if (timeDiff > 0.5) { // 每0.5秒更新一次速度
+    //                     const loadedDiff = loaded - lastLoaded;
+    //                     const speed = loadedDiff / timeDiff; // 字节/秒
+
+    //                     const speedFormatted = formatFileSize(speed) + '/秒';
+    //                     const remainingTime = calculateRemainingTime(loaded, total, speed);
+
+    //                     speedText.textContent = `速度: ${speedFormatted}`;
+    //                     timeText.textContent = `剩余时间: ${remainingTime}`;
+
+    //                     lastLoaded = loaded;
+    //                     lastTime = currentTime;
+    //                 }
+    //             }
+    //         });
+
+    //         // 加载完成
+    //         xhr.onload = function () {
+    //             if (xhr.status === 200 && !currentDownload.isCancelled) {
+    //                 const blob = new Blob([xhr.response]);
+    //                 const url = window.URL.createObjectURL(blob);
+
+    //                 const link = document.createElement('a');
+    //                 link.href = url;
+    //                 link.download = fileName;
+    //                 document.body.appendChild(link);
+    //                 link.click();
+    //                 document.body.removeChild(link);
+
+    //                 window.URL.revokeObjectURL(url);
+
+    //                 // 下载完成，关闭模态框
+    //                 setTimeout(() => {
+    //                     document.getElementById('downloadOverlay').classList.remove('show');
+    //                     resolve();
+    //                 }, 500);
+    //             } else if (!currentDownload.isCancelled) {
+    //                 reject(new Error('下载失败: ' + xhr.statusText));
+    //             }
+    //         };
+
+    //         // 错误处理
+    //         xhr.onerror = function () {
+    //             if (!currentDownload.isCancelled) {
+    //                 reject(new Error('网络错误，下载失败'));
+    //             }
+    //         };
+
+    //         // 中止处理
+    //         xhr.onabort = function () {
+    //             if (currentDownload.isCancelled) {
+    //                 document.getElementById('downloadOverlay').classList.remove('show');
+    //             }
+    //         };
+
+    //         // 发送请求
+    //         xhr.send();
+    //     });
+    // }
+
+    // 取消下载
+    function cancelDownload() {
+        if (currentDownload.xhr) {
+            currentDownload.isCancelled = true;
+            currentDownload.xhr.abort();
+            document.getElementById('downloadOverlay').classList.remove('show');
+        }
+    }
+
+    // // 最小化下载窗口
+    // function minimizeDownload() {
+    //     // 这里可以实现最小化到系统托盘或浏览器通知区域
+    //     // 目前先简单地隐藏模态框
+    //     alert('最小化功能正在开发中...');
+    // }
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 计算剩余时间
+    function calculateRemainingTime(loaded, total, speed) {
+        if (speed <= 0) return '未知';
+
+        const remainingBytes = total - loaded;
+        const remainingSeconds = remainingBytes / speed;
+
+        if (remainingSeconds > 86400) {
+            return Math.ceil(remainingSeconds / 86400) + ' 天';
+        } else if (remainingSeconds > 3600) {
+            return Math.ceil(remainingSeconds / 3600) + ' 小时';
+        } else if (remainingSeconds > 60) {
+            return Math.ceil(remainingSeconds / 60) + ' 分钟';
+        } else {
+            return Math.ceil(remainingSeconds) + ' 秒';
+        }
+    }
+
+    // 阻止遮罩层点击关闭
+    document.getElementById('downloadOverlay').addEventListener('click', function (e) {
+        if (e.target === this) {
+            e.stopPropagation();
+        }
+    });
+</script>
