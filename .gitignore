@@ -3,3 +3,5 @@ bin/
 .config/
 obj/
 Properties/
+appsettings.json
+appsettings.Development.json
